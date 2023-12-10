@@ -2,14 +2,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie #, WriteRules
 from models import Note
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
+import shutil
 from contextlib import asynccontextmanager
-# from src.schema import (
-#     PersonCreate,
-#     PersonRead,
-#     Pet as PetSchema,
-# )
-# from beanie.operators import In
 
 
 async def init():
@@ -33,6 +28,12 @@ async def create_person(note: Note):
     print(t, t.dict())
     reviews = await Note.find_all().to_list()
     return reviews
+
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...), payload: dict = {}):
+    return {"filename": file.filename, "payload":payload }
+    
 
 
 
