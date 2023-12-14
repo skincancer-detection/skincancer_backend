@@ -1,9 +1,12 @@
+from ast import Str
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie #, WriteRules
 from models import Note
-# from model.controller import SkinCancerModel
+from model.controller import SkinCancerModel
 
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
 import shutil
 # from contextlib import asynccontextmanager
 
@@ -22,7 +25,18 @@ import shutil
 
 app = FastAPI()
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace with the actual origin of your Node.js application
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-    return {"filename": file.filename }
+async def predict(payload: dict):
+    model = SkinCancerModel('/home/highvich', 'model_fold_')
+    prediction = model.predict_for_image(payload['image_local_path'])
+    return prediction
     
