@@ -18,7 +18,7 @@ import pretrainedmodels
 
 
 class SEResnext50_32x4d(nn.Module):
-    def __init__(self, pretrained='imagenet'):
+    def __init__(self, pretrained='imagenet', model_dir_path=''):
         super(SEResnext50_32x4d, self).__init__()
         
         self.base_model = pretrainedmodels.__dict__[
@@ -27,7 +27,7 @@ class SEResnext50_32x4d(nn.Module):
         if pretrained is not None:
             self.base_model.load_state_dict(
                 torch.load(
-                    "/home/anandsaturdayoff/se_resnext50_32x4d-a260b3a4.pth"
+                    model_dir_path+"/se_resnext50_32x4d-a260b3a4.pth"
                 )
             )
 
@@ -82,7 +82,7 @@ class SkinCancerModel:
             test_dataset, batch_size=16, shuffle=False, num_workers=4
         )
 
-        model = SEResnext50_32x4d(pretrained=None)
+        model = SEResnext50_32x4d(pretrained=None, model_dir_path=self.model_dir_path )
         model.load_state_dict(torch.load(fold_model_path))
         model.to(self.device)
 
