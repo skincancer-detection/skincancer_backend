@@ -54,7 +54,7 @@ class SkinCancerModel:
 
         self.model_dir_path = model_dir_path
         self.model_name_prefix = model_name_prefix
-        self.device = "cuda"
+        self.device_name = "cpu"
 
     def prediction_per_fold(self, fold, local_image_path):
     
@@ -82,23 +82,30 @@ class SkinCancerModel:
             test_dataset, batch_size=16, shuffle=False, num_workers=4
         )
 
+        print(fold_model_path)
         model = SEResnext50_32x4d(pretrained=None, model_dir_path=self.model_dir_path )
-        model.load_state_dict(torch.load(fold_model_path))
-        model.to(self.device)
+        # model.load_state_dict(torch.load(fold_model_path))
+        # model.to(self.device)
+        device = torch.device(self.device_name)
+        model.to(device)    
+        model.load_state_dict(torch.load(fold_model_path, map_location=device))
+        
 
         predictions = Engine.predict(test_loader, model
-                                    , device=self.device
+                                    , device=self.device_name
                                         )
         predictions = np.vstack((predictions)).ravel()
         predictions = torch.sigmoid(torch.tensor(predictions)).cpu().numpy()
+        first_value = predictions[0] if predictions.size > 0 else None
+    
+        return first_value
         
-        return predictions
 
     def predict_for_image(self, local_image_path):
-        prediction_0 = self.prediction_per_fold(self, "0", local_image_path)
-        prediction_1 = self.prediction_per_fold(self, "1", local_image_path)
-        prediction_2 = self.prediction_per_fold(self, "2", local_image_path)
-        prediction_3 = self.prediction_per_fold(self, "3", local_image_path)
-        prediction_4 = self.prediction_per_fold(self, "4", local_image_path)
+        prediction_0 = self.prediction_per_fold("0", local_image_path)
+        prediction_1 = self.prediction_per_fold("1", local_image_path)
+        prediction_2 = self.prediction_per_fold("2", local_image_path)
+        prediction_3 = self.prediction_per_fold("3", local_image_path)
+        prediction_4 = self.prediction_per_fold("4", local_image_path)
 
         return (prediction_0 + prediction_1 + prediction_2 + prediction_3 + prediction_4) / 5
