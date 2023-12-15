@@ -9,5 +9,6 @@ numpy
 pandas
 scikit-learn
 torch
+torchvision==0.16.1
 pretrainedmodels
-wtfml
+wtfml==0.0.2
