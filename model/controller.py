@@ -54,7 +54,7 @@ class SkinCancerModel:
 
         self.model_dir_path = model_dir_path
         self.model_name_prefix = model_name_prefix
-        self.device_name = "cpu"
+        self.device_name = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def prediction_per_fold(self, fold, local_image_path):
     
@@ -82,7 +82,6 @@ class SkinCancerModel:
             test_dataset, batch_size=16, shuffle=False, num_workers=4
         )
 
-        print(fold_model_path)
         model = SEResnext50_32x4d(pretrained=None, model_dir_path=self.model_dir_path )
         # model.load_state_dict(torch.load(fold_model_path))
         # model.to(self.device)

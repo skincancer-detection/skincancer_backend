@@ -8,19 +8,10 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 import shutil
-# from contextlib import asynccontextmanager
+import requests
 
-
-# async def init():
-#     client = AsyncIOMotorClient("mongodb+srv://jaatisbad9:wOsEbKlAD3RvvIIH@nosql.uz5okma.mongodb.net/?retryWrites=true&w=majority")
-#     await init_beanie(database=client.db_name, document_models=[Note])
-#     print("Database has been connected !")
-
-
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     await init()
-#     yield
+from dotenv import load_dotenv
+load_dotenv()
 
 
 app = FastAPI()
@@ -34,9 +25,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def download_file(url, save_path):
+    response = requests.get(url, stream=True)
+
+    if response.status_code == 200:
+        with open(save_path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=128):
+                file.write(chunk)
+        return True
+    return False
+
+
 @app.post("/predict")
 async def predict(payload: dict):
     model = SkinCancerModel('/home/highvich', 'model_fold_')
+    
+    if payload['image_local_path'].startswith("https://"):
+
+        local_path = '/tmp/'+ payload['image_local_path'].split("/")[-1]
+        download_file(payload['image_local_path'], local_path)
+        payload['image_local_path'] = local_path
+
     prediction = model.predict_for_image(payload['image_local_path'])
     return prediction
     
