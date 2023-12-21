@@ -89,10 +89,11 @@ class SkinCancerModel:
         model.to(device)    
         model.load_state_dict(torch.load(fold_model_path, map_location=device))
         
-
-        predictions = Engine.predict(test_loader, model
-                                    , device=self.device_name
-                                        )
+        model.eval()
+        with torch.inference_mode():
+            predictions = Engine.predict(test_loader, model
+                                    , device=self.device_name)
+                                    
         predictions = np.vstack((predictions)).ravel()
         predictions = torch.sigmoid(torch.tensor(predictions)).cpu().numpy()
         first_value = predictions[0] if predictions.size > 0 else None
