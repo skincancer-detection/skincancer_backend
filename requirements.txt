@@ -13,3 +13,4 @@ torchvision==0.16.1
 pretrainedmodels
 wtfml==0.0.2
 requests
+dotenv
