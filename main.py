@@ -47,6 +47,10 @@ async def predict(payload: dict):
         download_file(payload['image_local_path'], local_path)
         payload['image_local_path'] = local_path
 
-    prediction = model.predict_for_image(payload['image_local_path'])
+    try:
+        prediction = model.predict_for_image(payload['image_local_path'])
+    except Exception as e:
+        print("Prediction failed for ", payload)
+        raise(e)
     return prediction
     
