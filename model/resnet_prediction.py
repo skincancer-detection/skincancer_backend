@@ -10,16 +10,10 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, GroupKFold, KFold
 import pandas as pd
 import numpy as np
-import gc
 import os
 import cv2
-import time
-import datetime
 import warnings
 import random
-import matplotlib.pyplot as plt
-import seaborn as sns
-import subprocess
 from efficientnet_pytorch import EfficientNet
 
 
@@ -242,115 +236,119 @@ class Microscope:
         return f'{self.__class__.__name__}(p={self.p})'
 
 
-def prediction_helper(file_path, user_metadata={}):
+class PredictHelper:
+    def prediction_helper(self, file_path, user_metadata={}):
 
-    train_transform = transforms.Compose([
-        AdvancedHairAugmentation(hairs_folder=f'{current_dir}/melanoma-hairs'),
-        transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        Microscope(p=0.5),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-    ])
+        train_transform = transforms.Compose([
+            AdvancedHairAugmentation(hairs_folder=f'{current_dir}/melanoma-hairs'),
+            transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            Microscope(p=0.5),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+        ])
 
-    arch = EfficientNet.from_pretrained('efficientnet-b1')
+        arch = EfficientNet.from_pretrained('efficientnet-b1')
 
-    data_dict = {
-        'image_name': user_metadata.get('image_name', 'ISIC_6724629'),
-        'patient_id': user_metadata.get('patient_id', 'IP_9738076'),
-        'sex': user_metadata.get('sex', 'male'),
-        'age_approx': user_metadata.get('age_approx', 50),
-        'anatom_site_general_challenge': user_metadata.get('anatom_site_general_challenge', 'head/neck'),
-        'width': 1920,
-        'height': 1080
-    }
+        data_dict = {
+            'image_name': user_metadata.get('image_name', 'ISIC_6724629'),
+            'patient_id': user_metadata.get('patient_id', 'IP_9738076'),
+            'sex': user_metadata.get('sex', 'male'),
+            'age_approx': user_metadata.get('age_approx', 50),
+            'anatom_site_general_challenge': user_metadata.get('anatom_site_general_challenge', 'head/neck'),
+            'width': 1920,
+            'height': 1080
+        }
 
-    new_data_dict = {
-        'image_name': data_dict['image_name'],
-        'patient_id': data_dict['patient_id'],
-        'sex': 1 if data_dict['sex'] == 'male' else 0,  # Assuming 1 for female, 0 for other
-        'age_approx': data_dict['age_approx'] / 100,  # Normalize age between 0 and 1
-        'anatom_site_general_challenge': data_dict['anatom_site_general_challenge'],
-        'width': data_dict['width'],
-        'height': data_dict['height'],
-        'site_head/neck': 1 if data_dict['anatom_site_general_challenge'] == 'head/neck' else 0,
-        'site_lower extremity': 1 if data_dict['anatom_site_general_challenge'] == 'lower extremity' else 0,
-        'site_oral/genital': 1 if data_dict['anatom_site_general_challenge'] == 'oral/genital' else 0,
-        'site_palms/soles': 1 if data_dict['anatom_site_general_challenge'] == 'palms/soles' else 0,
-        'site_torso': 1 if data_dict['anatom_site_general_challenge'] == 'torso' else 0,
-        'site_upper extremity': 1 if data_dict['anatom_site_general_challenge'] == 'upper extremity' else 0,
-        'site_nan': 1 if pd.isna(data_dict['anatom_site_general_challenge']) else 0,
-    }
+        new_data_dict = {
+            'image_name': data_dict['image_name'],
+            'patient_id': data_dict['patient_id'],
+            'sex': 1 if data_dict['sex'] == 'male' else 0,  # Assuming 1 for female, 0 for other
+            'age_approx': data_dict['age_approx'] / 100,  # Normalize age between 0 and 1
+            'anatom_site_general_challenge': data_dict['anatom_site_general_challenge'],
+            'width': data_dict['width'],
+            'height': data_dict['height'],
+            'site_head/neck': 1 if data_dict['anatom_site_general_challenge'] == 'head/neck' else 0,
+            'site_lower extremity': 1 if data_dict['anatom_site_general_challenge'] == 'lower extremity' else 0,
+            'site_oral/genital': 1 if data_dict['anatom_site_general_challenge'] == 'oral/genital' else 0,
+            'site_palms/soles': 1 if data_dict['anatom_site_general_challenge'] == 'palms/soles' else 0,
+            'site_torso': 1 if data_dict['anatom_site_general_challenge'] == 'torso' else 0,
+            'site_upper extremity': 1 if data_dict['anatom_site_general_challenge'] == 'upper extremity' else 0,
+            'site_nan': 1 if pd.isna(data_dict['anatom_site_general_challenge']) else 0,
+        }
 
-    # print(new_data_dict)
-    test_df = pd.DataFrame([new_data_dict])
-
-
-    meta_features = ['sex', 'age_approx', 'site_head/neck', 'site_lower extremity', 'site_oral/genital', 'site_palms/soles', 'site_torso', 'site_upper extremity', 'site_nan']
-
-    #['sex', 'age_approx'] + [col for col in train_df.columns if 'site_' in col]
-    #meta_features.remove('anatom_site_general_challenge')
-
-    test = MelanomaDataset(df=test_df,
-                        file_path=file_path, 
-                        train=False,
-                        transforms=train_transform,  # For TTA
-                        meta_features=meta_features)
-
-    skf = GroupKFold(n_splits=5)
-
-    epochs = 12  # Number of epochs to run
-    es_patience = 3  # Early Stopping patience - for how many epochs with no improvements to wait
-    TTA = 3 # Test Time Augmentation rounds
-
-    # oof = np.zeros((len(train_df), 1))  # Out Of Fold predictions
-    preds = torch.zeros((len(test), 1), dtype=torch.float32, device=device)  # Predictions for test test
-
-    skf = KFold(n_splits=5, shuffle=True, random_state=47)
-
-    arch = EfficientNet.from_pretrained('efficientnet-b1')
-    model = Net(arch=arch, n_meta_features=len(meta_features))  # New model for each fold
-    test_loader = DataLoader(dataset=test, batch_size=1, shuffle=False, num_workers=2)
-
-    def predict_test_set(model, test_loader, device, TTA):
-        model.eval()  # Set the model to evaluation mode
-        predictions = torch.zeros((len(test_loader.dataset), 1), dtype=torch.float32, device=device)
-
-        with torch.no_grad():  # Disable gradient calculation during inference
-            for _ in range(TTA):
-                for i, x_test in enumerate(test_loader):
-                    x_test[0] = torch.tensor(x_test[0], device=device, dtype=torch.float32)
-                    x_test[1] = torch.tensor(x_test[1], device=device, dtype=torch.float32)
-
-                    # Forward pass
-                    z_test = model(x_test)
-                    #print(z_test)
-
-                    pred_test = torch.sigmoid(z_test)
-
-                    # Update predictions
-                    predictions[i * test_loader.batch_size:i * test_loader.batch_size + x_test[0].shape[0]] += pred_test
-
-        # Average predictions over TTA
-        predictions /= TTA
-        return predictions.cpu().numpy()
+        # print(new_data_dict)
+        test_df = pd.DataFrame([new_data_dict])
 
 
-    def return_pred(device=device):
-        preds_sum = 0  # Variable to accumulate predictions
-        current_dir = os.getcwd()
-        for i in range(1, 6):
-            model = Net(arch=arch, n_meta_features=len(meta_features))
-            model = torch.load(f'{current_dir}/model_{i}.pth')
-            model.to(device)
-            # model.eval()
+        meta_features = ['sex', 'age_approx', 'site_head/neck', 'site_lower extremity', 'site_oral/genital', 'site_palms/soles', 'site_torso', 'site_upper extremity', 'site_nan']
 
-            preds_i = predict_test_set(model=model, test_loader=test_loader, device=device, TTA=5)
-            preds_i = preds_i.reshape(-1)  # Reshape the predictions
+        #['sex', 'age_approx'] + [col for col in train_df.columns if 'site_' in col]
+        #meta_features.remove('anatom_site_general_challenge')
 
-           
-            preds_sum += preds_i
-        return preds_sum / 5  # Average predictions over 5 models
+        test = MelanomaDataset(df=test_df,
+                            file_path=file_path, 
+                            train=False,
+                            transforms=train_transform,  # For TTA
+                            meta_features=meta_features)
 
-    return return_pred()
+        skf = GroupKFold(n_splits=5)
+
+        epochs = 12  # Number of epochs to run
+        es_patience = 3  # Early Stopping patience - for how many epochs with no improvements to wait
+        TTA = 3 # Test Time Augmentation rounds
+
+        # oof = np.zeros((len(train_df), 1))  # Out Of Fold predictions
+        preds = torch.zeros((len(test), 1), dtype=torch.float32, device=device)  # Predictions for test test
+
+        skf = KFold(n_splits=5, shuffle=True, random_state=47)
+
+        arch = EfficientNet.from_pretrained('efficientnet-b1')
+        model = Net(arch=arch, n_meta_features=len(meta_features))  # New model for each fold
+        test_loader = DataLoader(dataset=test, batch_size=1, shuffle=False, num_workers=2)
+
+        def predict_test_set(model, test_loader, device, TTA):
+            model.eval()  # Set the model to evaluation mode
+            predictions = torch.zeros((len(test_loader.dataset), 1), dtype=torch.float32, device=device)
+
+            with torch.no_grad():  # Disable gradient calculation during inference
+                for _ in range(TTA):
+                    for i, x_test in enumerate(test_loader):
+                        x_test[0] = torch.tensor(x_test[0], device=device, dtype=torch.float32)
+                        x_test[1] = torch.tensor(x_test[1], device=device, dtype=torch.float32)
+
+                        # Forward pass
+                        z_test = model(x_test)
+                        #print(z_test)
+
+                        pred_test = torch.sigmoid(z_test)
+
+                        # Update predictions
+                        predictions[i * test_loader.batch_size:i * test_loader.batch_size + x_test[0].shape[0]] += pred_test
+
+            # Average predictions over TTA
+            predictions /= TTA
+            return predictions.cpu().numpy()
+
+
+        def return_pred(device=device):
+            preds_sum = 0  # Variable to accumulate predictions
+            current_dir = os.getcwd()
+            for i in range(1, 6):
+                import __main__
+                setattr(__main__, "Net", Net)
+                
+                model = Net(arch=arch, n_meta_features=len(meta_features))
+                model = torch.load(f'{current_dir}/model_{i}.pth')
+                model.to(device)
+                # model.eval()
+
+                preds_i = predict_test_set(model=model, test_loader=test_loader, device=device, TTA=5)
+                preds_i = preds_i.reshape(-1)  # Reshape the predictions
+
+            
+                preds_sum += preds_i
+            return preds_sum / 5  # Average predictions over 5 models
+
+        return return_pred()

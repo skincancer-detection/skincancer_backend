@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie #, WriteRules
 from models import Note
 from model.controller import SkinCancerModel
-from model.resnet_prediction import prediction_helper
+from model.resnet_prediction import PredictHelper
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,6 +49,6 @@ async def predict(payload: dict):
         payload['image_local_path'] = local_path
 
     # prediction = model.predict_for_image(payload['image_local_path'])
-    prediction = prediction_helper(payload['image_local_path'])
+    prediction = PredictHelper().prediction_helper(payload['image_local_path'])
     return prediction
     

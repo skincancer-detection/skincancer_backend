@@ -5,8 +5,8 @@ uvicorn
 numpy
 python-multipart
 albumentations
-numpy
-pandas
+numpy==1.21.0
+pandas==2.0.3
 scikit-learn
 torch
 torchvision==0.16.1
@@ -14,3 +14,6 @@ pretrainedmodels
 wtfml==0.0.2
 requests
 python-dotenv
+torchtoolbox
+matplotlib
+efficientnet-pytorch
