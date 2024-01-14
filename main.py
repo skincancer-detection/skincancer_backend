@@ -50,5 +50,6 @@ async def predict(payload: dict):
 
     # prediction = model.predict_for_image(payload['image_local_path'])
     prediction = PredictHelper().prediction_helper(payload['image_local_path'])
-    return prediction
+    #return prediction
+    return prediction.tolist()[0]
     
