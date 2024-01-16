@@ -248,9 +248,7 @@ class PredictHelper:
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
         ])
-
-        arch = EfficientNet.from_pretrained('efficientnet-b1')
-
+        
         data_dict = {
             'image_name': user_metadata.get('image_name', 'ISIC_6724629'),
             'patient_id': user_metadata.get('patient_id', 'IP_9738076'),
@@ -306,7 +304,7 @@ class PredictHelper:
 
         arch = EfficientNet.from_pretrained('efficientnet-b1')
         model = Net(arch=arch, n_meta_features=len(meta_features))  # New model for each fold
-        test_loader = DataLoader(dataset=test, batch_size=1, shuffle=False, num_workers=2)
+        test_loader = DataLoader(dataset=test, batch_size=1, shuffle=False, num_workers=0)
 
         def predict_test_set(model, test_loader, device, TTA):
             model.eval()  # Set the model to evaluation mode
