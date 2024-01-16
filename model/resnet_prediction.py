@@ -253,7 +253,7 @@ class PredictHelper:
             'image_name': user_metadata.get('image_name', 'ISIC_6724629'),
             'patient_id': user_metadata.get('patient_id', 'IP_9738076'),
             'sex': user_metadata.get('sex', 'male'),
-            'age_approx': user_metadata.get('age_approx', 50),
+            'age_approx': int(user_metadata.get('age_approx', 50)),
             'anatom_site_general_challenge': user_metadata.get('anatom_site_general_challenge', 'head/neck'),
             'width': 1920,
             'height': 1080
